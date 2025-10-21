@@ -1469,7 +1469,6 @@ Standardized page structure with responsive spacing:
 
 ```tsx
 import {PageLayout} from "@/components/shared/page-layout"
-
 ;<PageLayout title='Dashboard' description="Welcome back! Here's an overview.">
   <div>Page content...</div>
 </PageLayout>
