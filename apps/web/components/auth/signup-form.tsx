@@ -29,6 +29,7 @@ export function SignUpForm() {
         name,
       })
 
+      // Sign up successful - redirect to dashboard
       router.push("/dashboard")
       router.refresh()
     } catch (err) {

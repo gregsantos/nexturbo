@@ -670,33 +670,16 @@ export async function GET() {
 - Authentication gates (use server layouts)
 - Any logic that needs to render UI
 
-**Minimal middleware example (session refresh only):**
+**Minimal middleware example:**
 
 ```tsx
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server"
-import { auth } from "@/lib/server/auth"
 
 export async function middleware(request: NextRequest) {
-  // Only for session management, not auth gates
-  let response = NextResponse.next()
-
-  // Refresh session cookies if needed
-  await auth.api.getSession({
-    headers: request.headers,
-  })
-
-  // Optional: redirect authenticated users from landing page
-  if (request.nextUrl.pathname === "/") {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    })
-    if (session?.user) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-  }
-
-  return response
+  // BetterAuth handles session management automatically through API routes
+  // Keep middleware minimal - no session queries needed
+  return NextResponse.next()
 }
 
 export const config = {
@@ -705,6 +688,8 @@ export const config = {
   ],
 }
 ```
+
+**Note:** With BetterAuth, you typically don't need to call `auth.api.getSession()` in middleware. Session management is handled automatically through BetterAuth's API routes. See the [BetterAuth + Drizzle section](#betterauth--drizzle-critical-configuration) below for details.
 
 ### Server-First with Client Interactivity
 
@@ -791,6 +776,330 @@ export function UserMenu() {
   )
 }
 ```
+
+### BetterAuth + Drizzle: Critical Configuration
+
+**⚠️ CRITICAL: Schema Mapping for Drizzle Adapter**
+
+When using BetterAuth with Drizzle ORM, you MUST explicitly map your schema if you use plural table variable names.
+
+#### The Problem
+
+BetterAuth expects singular model names (`user`, `session`, `account`, `verification`), but it's common to export Drizzle table definitions with plural names (`users`, `sessions`, `accounts`, `verifications`).
+
+**This will cause initialization errors:**
+```typescript
+// ❌ WRONG - This will fail with "Failed to initialize database adapter"
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+  }),
+})
+```
+
+#### The Solution
+
+**Option 1: Explicit Schema Mapping (Recommended)**
+
+Map your plural variable names to BetterAuth's expected singular names:
+
+```typescript
+// ✅ CORRECT - Explicit mapping
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { db } from "./db"
+import { users, sessions, accounts, verifications } from "./db/schema"
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: users,              // Map 'user' → 'users'
+      session: sessions,        // Map 'session' → 'sessions'
+      account: accounts,        // Map 'account' → 'accounts'
+      verification: verifications, // Map 'verification' → 'verifications'
+    },
+  }),
+  // ... rest of config
+})
+```
+
+**Option 2: Use `usePlural` Flag**
+
+If ALL your tables use plural naming:
+
+```typescript
+// ✅ ALTERNATIVE - usePlural flag
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    usePlural: true, // BetterAuth will look for plural names
+  }),
+})
+```
+
+#### Database Connection Settings
+
+**Local Postgres.app:**
+```typescript
+// lib/server/db/index.ts
+import { drizzle } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
+import { users, sessions, accounts, verifications } from "./schema"
+
+const connectionString = process.env.DATABASE_URL!
+
+// ✅ Standard connection for local Postgres
+export const client = postgres(connectionString)
+export const db = drizzle(client, {
+  schema: {
+    users,
+    sessions,
+    accounts,
+    verifications,
+  },
+})
+```
+
+**Supabase (Transaction Mode):**
+```typescript
+// Only add { prepare: false } for Supabase
+export const client = postgres(connectionString, { prepare: false })
+```
+
+#### Middleware: Keep It Minimal
+
+**⚠️ DO NOT call `auth.api.getSession()` in middleware** - this can cause database query errors.
+
+```typescript
+// ✅ CORRECT - Minimal middleware
+// middleware.ts
+import { NextRequest, NextResponse } from "next/server"
+
+export async function middleware(request: NextRequest) {
+  // BetterAuth handles session management automatically
+  // No need to manually refresh sessions
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|public).*)"],
+}
+```
+
+**Why?** BetterAuth's API routes (`/api/auth/*`) handle session management automatically. Calling `getSession()` in middleware that runs on every request can cause:
+- Database connection pool exhaustion
+- Query timing errors
+- Adapter initialization failures
+
+#### Schema Table Names vs Variable Names
+
+Your Drizzle schema definition uses **singular table names** in the database:
+
+```typescript
+// lib/server/db/schema/users.ts
+export const users = pgTable("user", {      // ← Table name is "user" (singular)
+  id: text("id").primaryKey(),
+  // ...
+})
+
+export const sessions = pgTable("session", { // ← Table name is "session" (singular)
+  id: text("id").primaryKey(),
+  // ...
+})
+```
+
+The **variable names** are plural (`users`, `sessions`), but the actual **database tables** are singular (`user`, `session`). BetterAuth needs to know this mapping.
+
+#### Troubleshooting Checklist
+
+If you see "Failed to initialize database adapter":
+
+1. ✅ Check that table names match BetterAuth expectations (singular)
+2. ✅ Verify schema mapping in `drizzleAdapter()` config
+3. ✅ Ensure `DATABASE_URL` is correct and accessible
+4. ✅ Run `npm run db:push` to ensure tables exist
+5. ✅ Check that middleware isn't calling `getSession()` on every request
+6. ✅ Verify Drizzle schema exports all required tables (user, session, account, verification)
+
+#### Quick Reference
+
+```typescript
+// Correct BetterAuth + Drizzle Setup
+// lib/server/auth.ts
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { db } from "./db"
+import { users, sessions, accounts, verifications } from "./db/schema"
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: users,
+      session: sessions,
+      account: accounts,
+      verification: verifications,
+    },
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
+  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: process.env.BETTER_AUTH_URL,
+})
+```
+
+### Email Service Integration
+
+For production, replace `console.log` email handlers with a real email service.
+
+#### Option 1: Resend (Recommended)
+
+```bash
+npm install resend
+```
+
+```typescript
+// lib/server/auth.ts
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+export const auth = betterAuth({
+  // ... database config
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      await resend.emails.send({
+        from: 'noreply@yourapp.com',
+        to: user.email,
+        subject: 'Reset your password',
+        html: `<p>Click <a href="${url}">here</a> to reset your password</p>`,
+      })
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      await resend.emails.send({
+        from: 'noreply@yourapp.com',
+        to: user.email,
+        subject: 'Verify your email',
+        html: `<p>Click <a href="${url}">here</a> to verify your email</p>`,
+      })
+    },
+  },
+})
+```
+
+**Environment variables:**
+```bash
+RESEND_API_KEY="re_..."
+```
+
+#### Option 2: SendGrid
+
+```bash
+npm install @sendgrid/mail
+```
+
+```typescript
+// lib/server/auth.ts
+import sgMail from '@sendgrid/mail'
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+
+export const auth = betterAuth({
+  // ... database config
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sgMail.send({
+        from: 'noreply@yourapp.com',
+        to: user.email,
+        subject: 'Reset your password',
+        html: `<p>Click <a href="${url}">here</a> to reset your password</p>`,
+      })
+    },
+  },
+})
+```
+
+**Environment variables:**
+```bash
+SENDGRID_API_KEY="SG...."
+```
+
+### Testing Authentication
+
+#### Manual Testing Checklist
+
+- [ ] Sign up with new email
+- [ ] Check console for verification link (development mode)
+- [ ] Click verification link
+- [ ] Sign in with verified account
+- [ ] Access protected dashboard
+- [ ] Sign out
+- [ ] Try "Forgot password" flow
+- [ ] Check console for reset link (development mode)
+- [ ] Reset password
+- [ ] Sign in with new password
+- [ ] Verify session persists on page refresh
+
+#### Development Mode
+
+In development, verification/reset links are logged to console:
+
+```
+Verify email for user@example.com: http://localhost:3000/auth/verify-email?token=xxx
+Password reset for user@example.com: http://localhost:3000/auth/reset-password?token=xxx
+```
+
+Copy these URLs and open in browser to test the flows.
+
+### Production Deployment Checklist
+
+Before deploying authentication to production:
+
+1. **Set up production database**
+   - Create Supabase project (see README.md for migration guide)
+   - Update `DATABASE_URL` in production environment variables
+
+2. **Run migrations**
+   ```bash
+   npm run db:push
+   ```
+
+3. **Configure email service**
+   - Set up Resend/SendGrid account
+   - Add API key to production environment variables
+   - Update `auth.ts` email handlers (remove `console.log`)
+   - Enable `requireEmailVerification: true`
+
+4. **Update environment variables**
+   ```bash
+   DATABASE_URL="<production-db-url>"
+   BETTER_AUTH_SECRET="<new-secret-for-prod>"  # Generate new secret!
+   BETTER_AUTH_URL="https://yourapp.com"
+   NEXT_PUBLIC_APP_URL="https://yourapp.com"
+   RESEND_API_KEY="re_..."  # or SENDGRID_API_KEY
+   ```
+
+5. **Test complete auth flows** in production before going live
+   - Sign up → Email verification → Sign in
+   - Password reset flow
+   - Session persistence
+   - Protected routes
+
+6. **Security checklist**
+   - [ ] Different `BETTER_AUTH_SECRET` for production
+   - [ ] Email verification enabled
+   - [ ] HTTPS enforced
+   - [ ] Environment variables secured (never committed)
+   - [ ] Rate limiting configured (if applicable)
 
 ## API & Server Actions
 

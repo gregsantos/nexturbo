@@ -1,12 +1,13 @@
 import { SignInForm } from "@/components/auth/signin-form"
 import Link from "next/link"
+import { Suspense } from "react"
 
 export const metadata = {
   title: "Sign In",
   description: "Sign in to your account",
 }
 
-export default function SignInPage() {
+function SignInContent() {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
@@ -27,5 +28,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   )
 }
