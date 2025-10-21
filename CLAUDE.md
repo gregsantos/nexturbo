@@ -1393,6 +1393,386 @@ export function Button({ className, variant, size, ...props }: ButtonProps) {
 }
 ```
 
+## Responsive Design
+
+### Overview
+
+This project uses a **mobile-first** responsive design approach with Tailwind CSS v4. All components and layouts should look excellent on screens from 320px (mobile) to 2560px+ (large desktops).
+
+### Breakpoints
+
+Tailwind's default breakpoints (don't change these):
+
+```typescript
+{
+  sm: '640px',   // Small tablets, large phones (landscape)
+  md: '768px',   // Tablets
+  lg: '1024px',  // Small laptops, tablets (landscape)
+  xl: '1280px',  // Desktops
+  '2xl': '1536px' // Large desktops
+}
+```
+
+### Core Principles
+
+1. **Mobile-First**: Write base styles for mobile, add breakpoints for larger screens
+2. **Fluid Spacing**: Use responsive padding/margins that scale with screen size
+3. **Responsive Typography**: Text sizes should adapt across breakpoints
+4. **Touch-Friendly**: Minimum 44×44px touch targets on mobile
+5. **Content-First**: Let content determine breakpoints, not devices
+
+### Layout Components
+
+Use these foundational components for consistent responsive layouts:
+
+#### Container
+
+Constrains content width with responsive padding:
+
+```tsx
+import { Container } from "@/components/shared/container"
+
+// Standard container
+<Container>
+  <h1>Content</h1>
+</Container>
+
+// Full-width container
+<Container size="full">
+  <div>Edge-to-edge content</div>
+</Container>
+
+// Narrow container (for text content)
+<Container size="narrow">
+  <article>Blog post content...</article>
+</Container>
+```
+
+**Responsive behavior:**
+- Mobile: `px-4` (16px edges)
+- Tablet: `px-6` (24px edges)
+- Desktop: `px-8` (32px edges)
+- Max-width: Configurable by size prop
+
+#### PageLayout
+
+Standardized page structure with responsive spacing:
+
+```tsx
+import { PageLayout } from "@/components/shared/page-layout"
+
+<PageLayout
+  title="Dashboard"
+  description="Welcome back! Here's an overview."
+>
+  <div>Page content...</div>
+</PageLayout>
+```
+
+**Features:**
+- Responsive title sizing
+- Consistent vertical spacing
+- Optional description text
+- Breadcrumb support (optional)
+
+#### Section
+
+Content sections with responsive spacing:
+
+```tsx
+import { Section } from "@/components/shared/section"
+
+<Section>
+  <h2>Section Title</h2>
+  <p>Section content...</p>
+</Section>
+
+// With custom spacing
+<Section spacing="lg">
+  <div>More spaced content</div>
+</Section>
+```
+
+### Responsive Spacing Scale
+
+Use these standardized spacing patterns:
+
+```tsx
+// Padding (internal spacing)
+className="p-4 sm:p-6 lg:p-8"           // Containers
+className="p-3 sm:p-4 md:p-6"           // Cards
+className="px-4 py-6 sm:px-6 sm:py-8"   // Page sections
+
+// Gaps (between items)
+className="gap-4 sm:gap-6 lg:gap-8"     // Large layouts
+className="gap-2 sm:gap-3 md:gap-4"     // Component internals
+className="gap-1 sm:gap-2"              // Tight spacing
+
+// Margins (external spacing)
+className="mb-6 sm:mb-8 lg:mb-12"       // Section spacing
+className="mb-4 sm:mb-6"                // Content spacing
+className="mb-2 sm:mb-3"                // Element spacing
+```
+
+### Responsive Typography
+
+Use semantic sizing with breakpoint modifiers:
+
+```tsx
+// Headings
+<h1 className="text-2xl font-bold sm:text-3xl lg:text-4xl">
+  Page Title
+</h1>
+
+<h2 className="text-xl font-semibold sm:text-2xl lg:text-3xl">
+  Section Title
+</h2>
+
+<h3 className="text-lg font-semibold sm:text-xl">
+  Subsection Title
+</h3>
+
+// Body text
+<p className="text-sm sm:text-base">
+  Standard body text
+</p>
+
+<p className="text-xs sm:text-sm text-muted-foreground">
+  Secondary text
+</p>
+
+// Display text (hero sections)
+<h1 className="text-3xl font-bold sm:text-4xl md:text-5xl lg:text-6xl">
+  Hero Title
+</h1>
+```
+
+### Fluid Typography (Advanced)
+
+For content-heavy pages, use fluid typography with `clamp()`:
+
+```css
+/* In globals.css @theme section */
+--font-size-fluid-sm: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
+--font-size-fluid-base: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+--font-size-fluid-lg: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+--font-size-fluid-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+--font-size-fluid-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+```
+
+### Responsive Grid Patterns
+
+#### Stats Grid
+
+```tsx
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <StatsCard title="Users" value="1,234" />
+  <StatsCard title="Revenue" value="$89k" />
+  <StatsCard title="Growth" value="12%" />
+  <StatsCard title="Active" value="567" />
+</div>
+```
+
+#### Content Grid
+
+```tsx
+<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+  <Card>Card 1</Card>
+  <Card>Card 2</Card>
+  <Card>Card 3</Card>
+</div>
+```
+
+#### Sidebar Layout
+
+```tsx
+<div className="grid gap-6 lg:grid-cols-[240px_1fr]">
+  <aside className="hidden lg:block">Sidebar</aside>
+  <main>Main content</main>
+</div>
+```
+
+### Responsive Components
+
+#### Cards
+
+```tsx
+<div className="rounded-lg border bg-card p-4 sm:p-6">
+  <h3 className="mb-3 text-base font-semibold sm:text-lg">Title</h3>
+  <p className="text-sm text-muted-foreground sm:text-base">Content</p>
+</div>
+```
+
+#### Buttons
+
+```tsx
+// Touch-friendly sizing
+<Button size="default" className="h-11 px-6 text-base sm:h-10 sm:px-4 sm:text-sm">
+  Submit
+</Button>
+
+// Icon buttons (44×44 minimum on mobile)
+<Button size="icon" className="h-11 w-11 sm:h-10 sm:w-10">
+  <Icon />
+</Button>
+```
+
+#### Forms
+
+```tsx
+// Responsive form layouts
+<form className="space-y-4 sm:space-y-6">
+  <div className="grid gap-4 sm:grid-cols-2">
+    <Input label="First Name" />
+    <Input label="Last Name" />
+  </div>
+  <Input label="Email" />
+  <Button className="w-full sm:w-auto">Submit</Button>
+</form>
+```
+
+### Show/Hide Patterns
+
+#### Hide on Mobile
+
+```tsx
+<div className="hidden sm:block">
+  Desktop only content
+</div>
+```
+
+#### Show on Mobile Only
+
+```tsx
+<div className="sm:hidden">
+  Mobile only content
+</div>
+```
+
+#### Responsive Navigation
+
+```tsx
+{/* Mobile menu button */}
+<button className="lg:hidden">
+  <Menu />
+</button>
+
+{/* Desktop navigation */}
+<nav className="hidden lg:flex gap-6">
+  <Link href="/about">About</Link>
+  <Link href="/contact">Contact</Link>
+</nav>
+```
+
+### Touch Targets
+
+Ensure interactive elements are touch-friendly on mobile:
+
+```tsx
+// ❌ Too small for mobile
+<button className="h-8 w-8 p-1">
+  <Icon />
+</button>
+
+// ✅ Touch-friendly minimum
+<button className="h-11 w-11 p-2 sm:h-9 sm:w-9">
+  <Icon />
+</button>
+
+// ✅ With spacing
+<button className="min-h-[44px] px-4 py-2 sm:min-h-[36px]">
+  Click me
+</button>
+```
+
+### Responsive Images
+
+```tsx
+import Image from "next/image"
+
+// Responsive image sizing
+<div className="relative aspect-video w-full">
+  <Image
+    src="/image.jpg"
+    alt="Description"
+    fill
+    className="object-cover"
+    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  />
+</div>
+
+// Different images for mobile/desktop
+<picture>
+  <source media="(min-width: 768px)" srcSet="/desktop.jpg" />
+  <img src="/mobile.jpg" alt="Description" />
+</picture>
+```
+
+### Testing Responsive Design
+
+1. **Browser DevTools**: Use responsive design mode
+2. **Test on real devices**: iOS and Android
+3. **Check breakpoints**: Test at 320px, 768px, 1024px, 1440px
+4. **Verify touch targets**: Minimum 44×44px
+5. **Test text readability**: Line length, contrast, size
+6. **Horizontal scroll**: Ensure no horizontal overflow
+
+### Common Patterns
+
+#### Two-Column Layout
+
+```tsx
+<div className="grid gap-6 lg:grid-cols-2">
+  <div>Column 1</div>
+  <div>Column 2</div>
+</div>
+```
+
+#### Three-Column to Single
+
+```tsx
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div>Item 1</div>
+  <div>Item 2</div>
+  <div>Item 3</div>
+</div>
+```
+
+#### Responsive Flexbox
+
+```tsx
+<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <h2>Title</h2>
+  <Button>Action</Button>
+</div>
+```
+
+#### Stack on Mobile, Side-by-side on Desktop
+
+```tsx
+<div className="space-y-4 lg:flex lg:gap-6 lg:space-y-0">
+  <div className="lg:flex-1">Content 1</div>
+  <div className="lg:flex-1">Content 2</div>
+</div>
+```
+
+### Accessibility Considerations
+
+- Use semantic HTML (`<nav>`, `<main>`, `<article>`)
+- Ensure focus states are visible
+- Test with keyboard navigation
+- Use ARIA labels for icon-only buttons
+- Maintain color contrast ratios (WCAG AA minimum)
+- Don't rely solely on color to convey information
+
+### Performance Optimization
+
+1. **Lazy load images**: Use Next.js `<Image>` component
+2. **Minimize layout shift**: Use aspect-ratio utilities
+3. **Optimize fonts**: Use `font-display: swap`
+4. **Reduce JS for mobile**: Minimize client components
+5. **Use content visibility**: `content-visibility: auto` for long lists
+
 ## TypeScript
 
 ### Type Inference from Database
