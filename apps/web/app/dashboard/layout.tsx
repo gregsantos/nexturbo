@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation"
-import { auth } from "@/lib/server/auth"
-import { headers } from "next/headers"
-import { DashboardNav } from "@/components/dashboard/dashboard-nav"
+import {redirect} from "next/navigation"
+import {auth} from "@/lib/server/auth"
+import {headers} from "next/headers"
+import {DashboardNav} from "@/components/dashboard/dashboard-nav"
 
 export const metadata = {
   title: "Dashboard",
@@ -25,9 +25,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <DashboardNav user={session.user} />
-      <main className="flex-1">{children}</main>
+    <div className='flex min-h-screen flex-col'>
+      <DashboardNav user={session.user} homeHref='/dashboard' />
+      <main className='flex-1'>{children}</main>
     </div>
   )
 }
