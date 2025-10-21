@@ -23,10 +23,8 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({children}: ThemeProviderProps) {
   const [theme, setTheme] = useState<"light" | "dark">("dark")
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     // Load theme from localStorage or default to dark
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
     if (savedTheme) {
@@ -42,15 +40,9 @@ export function ThemeProvider({children}: ThemeProviderProps) {
     document.documentElement.classList.toggle("dark", newTheme === "dark")
   }
 
-  // Prevent flash of incorrect theme
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeContext.Provider value={{theme, toggleTheme}}>
       {children}
     </ThemeContext.Provider>
   )
 }
-
