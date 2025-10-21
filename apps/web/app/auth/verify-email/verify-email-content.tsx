@@ -16,7 +16,9 @@ export function VerifyEmailContent() {
       <AuthLayout
         title='Email Verified!'
         description='Your email has been successfully verified. You can now sign in to your account.'
-        icon={<CheckCircle className='h-12 w-12 text-green-600 sm:h-16 sm:w-16' />}
+        icon={
+          <CheckCircle className='h-12 w-12 text-green-600 sm:h-16 sm:w-16' />
+        }
       >
         <Button asChild className='h-11 w-full sm:h-10'>
           <Link href='/auth/signin'>Sign In</Link>
@@ -69,4 +71,3 @@ export function VerifyEmailContent() {
     </AuthLayout>
   )
 }
-
