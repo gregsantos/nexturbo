@@ -27,14 +27,18 @@ export function ThemeProvider({children}: ThemeProviderProps) {
   useEffect(() => {
     // Load theme from localStorage or default to dark
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-      // Apply theme class
-      if (savedTheme === "dark") {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
+    const effectiveTheme = savedTheme || "dark"
+    
+    // Always update state
+    setTheme(effectiveTheme)
+    
+    // Always sync the DOM classes
+    if (effectiveTheme === "dark") {
+      document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
+    } else {
+      document.documentElement.classList.add("light")
+      document.documentElement.classList.remove("dark")
     }
   }, [])
 
@@ -43,10 +47,12 @@ export function ThemeProvider({children}: ThemeProviderProps) {
     setTheme(newTheme)
     localStorage.setItem("theme", newTheme)
     
-    // Apply theme class
+    // Apply theme classes
     if (newTheme === "dark") {
       document.documentElement.classList.add("dark")
+      document.documentElement.classList.remove("light")
     } else {
+      document.documentElement.classList.add("light")
       document.documentElement.classList.remove("dark")
     }
   }
