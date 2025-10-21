@@ -1,4 +1,5 @@
 ---
+name: Add Database Table
 description: Add a new database table with Drizzle ORM
 ---
 

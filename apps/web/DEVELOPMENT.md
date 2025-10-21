@@ -34,11 +34,14 @@ export const metadata = {
 
 ### Add Protected Route
 
-Create `layout.tsx` in route:
+Create `layout.tsx` in route with forced dynamic rendering:
 ```tsx
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/server/auth"
 import { headers } from "next/headers"
+
+// ⚠️ Critical: Force dynamic for fresh auth checks
+export const dynamic = "force-dynamic"
 
 export default async function Layout({ children }) {
   const session = await auth.api.getSession({
@@ -48,6 +51,8 @@ export default async function Layout({ children }) {
   return <>{children}</>
 }
 ```
+
+**Important:** Always use server layouts for auth, NOT middleware.
 
 ### Add Server Action
 
