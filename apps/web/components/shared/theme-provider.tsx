@@ -29,7 +29,12 @@ export function ThemeProvider({children}: ThemeProviderProps) {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
     if (savedTheme) {
       setTheme(savedTheme)
-      document.documentElement.classList.toggle("dark", savedTheme === "dark")
+      // Apply theme class
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
     }
   }, [])
 
@@ -37,7 +42,13 @@ export function ThemeProvider({children}: ThemeProviderProps) {
     const newTheme = theme === "dark" ? "light" : "dark"
     setTheme(newTheme)
     localStorage.setItem("theme", newTheme)
-    document.documentElement.classList.toggle("dark", newTheme === "dark")
+    
+    // Apply theme class
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
   }
 
   return (
