@@ -464,9 +464,48 @@ export default async function DynamicPage() {
 
 ## Authentication
 
-### Protecting Routes
+### ⚠️ Critical: Use Server Layouts, NOT Middleware
 
-Use server layouts for authentication:
+**Server layouts are the recommended pattern for authentication in Next.js 15 App Router.**
+
+Why server layouts over middleware:
+- ✅ Execute on the same request as the page (no extra hops)
+- ✅ Full TypeScript support and type inference
+- ✅ Access to all server component features (SSR, streaming, Suspense)
+- ✅ Can render UI and compose with data fetching
+- ✅ Co-located with protected routes (no drift-prone path lists)
+- ❌ Middleware cannot render, requires path matchers, and adds complexity
+
+### ❌ Anti-Pattern: Middleware-Based Auth (DON'T DO THIS)
+
+**This is the OLD, INCORRECT pattern that should be avoided:**
+
+```tsx
+// ❌ DO NOT DO THIS - Old middleware-based pattern
+// middleware.ts
+export function middleware(request: NextRequest) {
+  const session = getSession()
+  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
+    return NextResponse.redirect(new URL('/auth/signin', request.url))
+  }
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/settings/:path*']
+}
+```
+
+**Problems with this approach:**
+- ❌ Cannot render UI or show loading states
+- ❌ Requires maintaining drift-prone path lists in matcher config
+- ❌ Adds extra network hops (middleware → redirect → page)
+- ❌ Limited TypeScript support and type inference
+- ❌ Cannot compose with data fetching
+- ❌ Harder to test and debug
+
+### Protecting Routes with Server Layouts
+
+**Always force dynamic rendering in auth layouts** to ensure fresh auth checks on every request:
 
 ```tsx
 // app/dashboard/layout.tsx
@@ -474,11 +513,16 @@ import { redirect } from "next/navigation"
 import { auth } from "@/lib/server/auth"
 import { headers } from "next/headers"
 
+// ⚠️ CRITICAL: Force dynamic rendering for auth
+export const dynamic = "force-dynamic"
+// Alternative: export const revalidate = 0
+
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Server-side auth check
   const session = await auth.api.getSession({
     headers: await headers(),
   })
@@ -496,13 +540,60 @@ export default async function DashboardLayout({
 }
 ```
 
-### Role-Based Access
+### Role-Based Access with Route Groups
+
+Use route groups `(name)` to organize routes by role without affecting URLs:
+
+```
+app/
+├── (auth)/              # Public routes
+│   ├── signin/
+│   └── signup/
+├── (app)/               # Base authenticated routes
+│   ├── layout.tsx       # Auth gate
+│   ├── dashboard/
+│   └── settings/
+└── (admin)/             # Admin-only routes
+    ├── layout.tsx       # Admin role check
+    └── users/
+```
+
+**Base auth layout:**
 
 ```tsx
-// app/admin/layout.tsx
+// app/(app)/layout.tsx
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/server/auth"
 import { headers } from "next/headers"
+
+export const dynamic = "force-dynamic"
+
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
+  return <>{children}</>
+}
+```
+
+**Role-specific nested layout:**
+
+```tsx
+// app/(admin)/layout.tsx
+import { redirect } from "next/navigation"
+import { auth } from "@/lib/server/auth"
+import { headers } from "next/headers"
+
+export const dynamic = "force-dynamic"
 
 export default async function AdminLayout({
   children,
@@ -517,7 +608,7 @@ export default async function AdminLayout({
     redirect("/auth/signin")
   }
 
-  // Check role from user metadata
+  // Check role from user metadata or database
   if (session.user.role !== "admin") {
     redirect("/dashboard")
   }
@@ -526,7 +617,158 @@ export default async function AdminLayout({
 }
 ```
 
+### API Route Security
+
+**⚠️ CRITICAL: Validate auth in EVERY API route independently. Never rely on middleware.**
+
+```tsx
+// app/api/admin/users/route.ts
+import { headers } from "next/headers"
+import { auth } from "@/lib/server/auth"
+import { NextResponse } from "next/server"
+
+export async function GET() {
+  // Always validate auth in API routes
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  if (session.user.role !== "admin") {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: 403 }
+    )
+  }
+
+  // Proceed with authenticated logic
+  const data = await db.query.users.findMany()
+  return NextResponse.json({ data })
+}
+```
+
+### When to Use Middleware
+
+**Use middleware ONLY for these specific cases:**
+
+✅ **Do use middleware for:**
+- Session cookie refresh/synchronization
+- Top-level redirects (e.g., `/` → `/dashboard` for authenticated users)
+- i18n routing and locale detection
+- Bot protection and rate limiting
+- CORS headers and global security headers
+
+❌ **Do NOT use middleware for:**
+- Route protection (use server layouts)
+- Role-based access control (use nested layouts)
+- Authentication gates (use server layouts)
+- Any logic that needs to render UI
+
+**Minimal middleware example (session refresh only):**
+
+```tsx
+// middleware.ts
+import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/lib/server/auth"
+
+export async function middleware(request: NextRequest) {
+  // Only for session management, not auth gates
+  let response = NextResponse.next()
+
+  // Refresh session cookies if needed
+  await auth.api.getSession({
+    headers: request.headers,
+  })
+
+  // Optional: redirect authenticated users from landing page
+  if (request.nextUrl.pathname === "/") {
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    })
+    if (session?.user) {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+  }
+
+  return response
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+  ],
+}
+```
+
+### Server-First with Client Interactivity
+
+Fetch auth data on server, pass to client components for UI state:
+
+```tsx
+// app/dashboard/page.tsx (Server Component)
+import { headers } from "next/headers"
+import { auth } from "@/lib/server/auth"
+import { DashboardClient } from "./dashboard-client"
+
+export const dynamic = "force-dynamic"
+
+export default async function DashboardPage() {
+  // Server-side auth and data fetching
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  // Fetch data with auth context
+  const data = await db.query.posts.findMany({
+    where: eq(posts.userId, session.user.id),
+  })
+
+  // Pass to client component for interactivity
+  return <DashboardClient user={session.user} posts={data} />
+}
+```
+
+```tsx
+// app/dashboard/dashboard-client.tsx (Client Component)
+"use client"
+
+import { useState } from "react"
+import type { User, Post } from "@/lib/server/db/schema"
+
+interface Props {
+  user: User
+  posts: Post[]
+}
+
+export function DashboardClient({ user, posts }: Props) {
+  const [filter, setFilter] = useState("")
+
+  // Client-side interactivity with server data
+  const filtered = posts.filter(post =>
+    post.title.includes(filter)
+  )
+
+  return (
+    <div>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      {filtered.map(post => <PostCard key={post.id} post={post} />)}
+    </div>
+  )
+}
+```
+
 ### Client-Side Auth Hooks
+
+For client component UI state only (not for auth gates):
 
 ```tsx
 "use client"

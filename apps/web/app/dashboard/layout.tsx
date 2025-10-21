@@ -8,6 +8,9 @@ export const metadata = {
   description: "Manage your account",
 }
 
+// Force dynamic rendering for fresh auth checks on every request
+export const dynamic = "force-dynamic"
+
 export default async function DashboardLayout({
   children,
 }: {

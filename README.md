@@ -16,16 +16,33 @@ A modern, production-ready Next.js 15 starter template with TypeScript, Tailwind
 
 ## Project Structure
 
-```
+```md
 .
+claude-next/
+├── .claude/
+│ └── skills/ # Claude Code skills for guided workflows
+│ ├── add-feature.md # Complete feature implementation
+│ ├── add-db-table.md # Database table creation
+│ ├── add-component.md # Component patterns
+│ └── README.md # Skills documentation
 ├── apps/
-│   └── web/                 # Main Next.js application
-│       ├── app/            # App router pages and layouts
-│       ├── components/     # React components
-│       ├── lib/            # Utilities and configurations
-│       └── public/         # Static assets
-├── packages/               # Shared packages (future use)
-└── turbo.json             # Turborepo configuration
+│ └── web/ # Main Next.js application
+│ ├── app/
+│ │ ├── auth/ # Authentication pages
+│ │ ├── dashboard/ # Protected dashboard
+│ │ └── api/auth/ # BetterAuth API routes
+│ ├── components/
+│ │ ├── ui/ # shadcn/ui components
+│ │ ├── auth/ # Auth forms
+│ │ └── dashboard/ # Dashboard components
+│ ├── lib/
+│ │ ├── server/ # Server-only code
+│ │ ├── actions/ # Server actions (future)
+│ │ └── utils.ts # Utilities
+│ └── public/ # Static assets
+├── CLAUDE.md # Comprehensive development guide
+├── README.md # Project documentation
+└── turbo.json # Turborepo configuration
 ```
 
 ## Why Turborepo?
@@ -45,18 +62,18 @@ This starter uses Turborepo for several strategic reasons:
 
 As your project grows, you can easily expand:
 
-```
+```md
 apps/
-├── web/           # Main customer-facing app
-├── admin/         # Internal admin dashboard
-├── marketing/     # Marketing/landing pages
-└── docs/          # Documentation site
+├── web/ # Main customer-facing app
+├── admin/ # Internal admin dashboard
+├── marketing/ # Marketing/landing pages
+└── docs/ # Documentation site
 
 packages/
-├── ui/            # Shared component library
-├── config/        # Shared configurations
-├── database/      # Shared database schemas
-└── utils/         # Shared utility functions
+├── ui/ # Shared component library
+├── config/ # Shared configurations
+├── database/ # Shared database schemas
+└── utils/ # Shared utility functions
 ```
 
 ### Vercel Deployment
@@ -81,24 +98,28 @@ See the [Deployment](#deployment) section for detailed instructions.
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd claude-next
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Set up environment variables:
+
 ```bash
 cd apps/web
 cp .env.example .env
 ```
 
 4. Update the `.env` file with your configuration:
-```env
+
+```bash
 DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 BETTER_AUTH_SECRET="your-secret-key-here-generate-a-random-string"
@@ -106,12 +127,14 @@ BETTER_AUTH_URL="http://localhost:3000"
 ```
 
 5. Generate and run database migrations:
+
 ```bash
 cd apps/web
 npm run db:push
 ```
 
 6. Start the development server:
+
 ```bash
 # From root directory
 npm run dev
@@ -152,16 +175,34 @@ This starter includes BetterAuth with email/password authentication:
 - **Sign In**: `/auth/signin`
 - **Dashboard**: `/dashboard` (protected route)
 
-### Adding Authentication to Pages
+### ⚠️ Authentication Best Practices
 
-Protected routes use server-side session validation:
+This starter follows Next.js 15 App Router best practices by using **server layouts for authentication**, not middleware.
+
+**Why server layouts:**
+- ✅ Execute on the same request (no extra hops)
+- ✅ Full TypeScript support
+- ✅ Can render UI and compose with data fetching
+- ✅ Co-located with protected routes
+
+### Protecting Routes with Server Layouts
+
+**Always use `dynamic = "force-dynamic"` in auth layouts** for fresh auth checks:
 
 ```typescript
-import { redirect } from "next/navigation"
-import { auth } from "@/lib/server/auth"
-import { headers } from "next/headers"
+// app/dashboard/layout.tsx
+import {redirect} from "next/navigation"
+import {auth} from "@/lib/server/auth"
+import {headers} from "next/headers"
 
-export default async function ProtectedPage() {
+// Force dynamic rendering for fresh auth checks
+export const dynamic = "force-dynamic"
+
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const session = await auth.api.getSession({
     headers: await headers(),
   })
@@ -170,9 +211,74 @@ export default async function ProtectedPage() {
     redirect("/auth/signin")
   }
 
-  return <div>Protected content</div>
+  return (
+    <div>
+      <DashboardNav user={session.user} />
+      {children}
+    </div>
+  )
 }
 ```
+
+### Role-Based Access
+
+Use nested layouts with route groups for role-based access:
+
+```typescript
+// app/(admin)/layout.tsx
+import {redirect} from "next/navigation"
+import {auth} from "@/lib/server/auth"
+import {headers} from "next/headers"
+
+export const dynamic = "force-dynamic"
+
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
+  // Check role
+  if (session.user.role !== "admin") {
+    redirect("/dashboard")
+  }
+
+  return <>{children}</>
+}
+```
+
+### API Route Security
+
+⚠️ **Always validate auth in API routes independently:**
+
+```typescript
+// app/api/admin/route.ts
+import {headers} from "next/headers"
+import {auth} from "@/lib/server/auth"
+import {NextResponse} from "next/server"
+
+export async function GET() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session) {
+    return NextResponse.json({error: "Unauthorized"}, {status: 401})
+  }
+
+  // Proceed with authenticated logic
+  return NextResponse.json({data})
+}
+```
+
+See [CLAUDE.md](./CLAUDE.md#authentication) for comprehensive authentication patterns.
 
 ## Database
 
@@ -219,16 +325,19 @@ Vercel has native Turborepo support, making deployment seamless:
 #### Initial Setup
 
 1. **Push to GitHub**
+
    ```bash
    git push origin main
    ```
 
 2. **Import in Vercel**
+
    - Go to [vercel.com/new](https://vercel.com/new)
    - Import your repository
    - Vercel will auto-detect the monorepo structure
 
 3. **Configure Project Settings**
+
    - **Framework Preset**: Next.js
    - **Root Directory**: `apps/web` ⚠️ Important!
    - **Build Command**: Leave default (Vercel auto-detects)
@@ -238,6 +347,7 @@ Vercel has native Turborepo support, making deployment seamless:
 4. **Environment Variables**
 
    Add these in the Vercel dashboard:
+
    ```
    DATABASE_URL=postgresql://...
    NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
@@ -252,6 +362,7 @@ Vercel has native Turborepo support, making deployment seamless:
 #### Subsequent Deployments
 
 Every push to `main` will automatically deploy. For other branches:
+
 - Vercel creates preview deployments automatically
 - Each PR gets its own preview URL
 
@@ -270,6 +381,7 @@ When you add more apps (admin, docs, etc.):
 #### Build Performance
 
 Turborepo's caching works automatically on Vercel:
+
 - Faster builds (only rebuilds what changed)
 - Shared cache across deployments
 - Parallel builds for multiple apps
@@ -288,6 +400,7 @@ npm run start
 ```
 
 **Docker Deployment:**
+
 ```dockerfile
 FROM node:18-alpine
 
@@ -310,6 +423,7 @@ This starter includes comprehensive documentation and tooling:
 ### Documentation
 
 - **[CLAUDE.md](./CLAUDE.md)** - Comprehensive development guide
+
   - Architecture principles and patterns
   - Component creation (Server vs Client)
   - Data fetching strategies
@@ -335,6 +449,7 @@ Located in `.claude/skills/`, these provide guided workflows:
 - **add-component** - Component creation following best practices
 
 To use a skill with Claude Code:
+
 ```
 I need to add a new feature for user profiles.
 Use the add-feature skill.

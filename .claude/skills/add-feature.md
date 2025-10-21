@@ -201,12 +201,17 @@ export default function Error({ error, reset }: {
 
 #### Step 6: Authentication (if needed)
 
-Add auth layout:
+**⚠️ Always use server layouts for auth, NOT middleware.**
+
+Add auth layout with forced dynamic rendering:
 ```typescript
 // app/[feature]/layout.tsx
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/server/auth"
 import { headers } from "next/headers"
+
+// ⚠️ CRITICAL: Force dynamic rendering for fresh auth checks
+export const dynamic = "force-dynamic"
 
 export default async function [Feature]Layout({
   children,
@@ -224,6 +229,14 @@ export default async function [Feature]Layout({
   return <>{children}</>
 }
 ```
+
+**Why server layouts for auth:**
+- ✅ Execute on the same request (no extra hops)
+- ✅ Full TypeScript support and type inference
+- ✅ Can render UI and compose with data fetching
+- ✅ Co-located with protected routes
+
+**Do NOT use middleware for auth gates** - middleware should only be used for session refresh and cross-cutting concerns like i18n.
 
 ### 4. Best Practices Checklist
 
