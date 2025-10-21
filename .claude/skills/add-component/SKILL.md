@@ -1,4 +1,5 @@
 ---
+name: Add Component
 description: Add a new component following Next.js 15 and shadcn/ui best practices
 ---
 

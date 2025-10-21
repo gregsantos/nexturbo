@@ -1,4 +1,5 @@
 ---
+name: Add Feature
 description: Add a new feature to the Next.js app following best practices
 ---
 
