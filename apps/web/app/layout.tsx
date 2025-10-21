@@ -1,5 +1,6 @@
-import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import type {Metadata} from "next"
+import {Geist, Geist_Mono} from "next/font/google"
+import {ThemeProvider} from "@/components/shared"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -14,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Next.js 15 Starter",
-  description: "A modern Next.js 15 starter with TypeScript, Tailwind CSS, shadcn/ui, BetterAuth, and Drizzle ORM",
+  description:
+    "A modern Next.js 15 starter with TypeScript, Tailwind CSS, shadcn/ui, BetterAuth, and Drizzle ORM",
 }
 
 export default function RootLayout({
@@ -23,11 +25,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang='en' className='dark' suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   )

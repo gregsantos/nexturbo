@@ -4,6 +4,7 @@ import Link from "next/link"
 import {useRouter} from "next/navigation"
 import {signOut} from "@/lib/auth-client"
 import {Button} from "@/components/ui/button"
+import {ThemeToggle} from "./theme-toggle"
 import {Home, LogOut, User} from "lucide-react"
 
 interface AppNavProps {
@@ -60,6 +61,9 @@ export function AppNav({
             <User className='h-4 w-4 shrink-0 text-muted-foreground' />
             <span className='truncate text-sm font-medium'>{user.name}</span>
           </div>
+
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
           {/* Sign Out Button */}
           <Button
