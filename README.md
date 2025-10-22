@@ -4,6 +4,7 @@ A modern, production-ready Next.js 15 starter template with TypeScript, Tailwind
 
 ## Features
 
+### Core Stack
 - **Next.js 15** - Latest version with App Router and React Server Components
 - **TypeScript** - Strict mode enabled for maximum type safety
 - **Tailwind CSS v4** - Modern utility-first CSS framework
@@ -13,6 +14,25 @@ A modern, production-ready Next.js 15 starter template with TypeScript, Tailwind
 - **Turborepo** - High-performance monorepo build system
 - **lucide-react** - Beautiful icon library
 - **Zod** - TypeScript-first schema validation
+
+### Testing & Quality
+- **Vitest** - Fast unit/integration testing with React support
+- **Playwright** - Multi-browser E2E testing
+- **MSW** - API mocking for consistent tests
+- **70%+ Coverage** - Configured thresholds for all metrics
+
+### Production Features
+- **Feature Flags** - Environment-based feature toggles
+- **Structured Logging** - Pino logger with sensitive data redaction
+- **Security Headers** - XSS, CSP, CORS, and frame protection
+- **Framer Motion** - Smooth, performant animations
+- **GitHub Actions** - Automated CI/CD pipeline
+
+### Developer Experience
+- **Comprehensive Docs** - CLAUDE.md (1200+ lines) + TESTING.md
+- **Claude Skills** - Guided workflows for common tasks
+- **Type-Safe APIs** - End-to-end type safety
+- **Hot Reload** - Instant feedback with Turbopack
 
 ## Project Structure
 
@@ -154,14 +174,29 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `npm run build` - Build all apps for production
 - `npm run lint` - Lint all apps
 - `npm run type-check` - Type check all apps
+- `npm test` - Run all unit tests
+- `npm run test:ui` - Run tests in interactive UI mode
+- `npm run test:coverage` - Run tests with coverage report
+- `npm run test:e2e` - Run E2E tests with Playwright
 
 ### App Level (apps/web)
 
+#### Development
 - `npm run dev` - Start development server with Turbopack
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
+
+#### Testing
+- `npm test` - Run unit tests
+- `npm run test:ui` - Run tests in interactive UI mode
+- `npm run test:coverage` - Generate coverage report
+- `npm run test:e2e` - Run E2E tests
+- `npm run test:e2e:ui` - Run E2E tests in UI mode
+- `npm run test:e2e:debug` - Debug E2E tests
+
+#### Database
 - `npm run db:generate` - Generate Drizzle migrations
 - `npm run db:migrate` - Run migrations
 - `npm run db:push` - Push schema changes to database
@@ -315,6 +350,118 @@ This starter follows Next.js 15 best practices:
 - **Performance** - Turbopack for fast builds and HMR
 - **SEO** - Metadata API for all pages
 - **Accessibility** - ARIA attributes and semantic HTML
+
+## Testing
+
+This starter includes comprehensive testing infrastructure for production-ready applications.
+
+### Quick Start
+
+```bash
+# Run unit tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run E2E tests
+npm run test:e2e
+
+# Interactive test UI
+npm run test:ui
+```
+
+### What's Included
+
+- **Vitest** - Fast unit/integration testing
+- **React Testing Library** - Component testing
+- **Playwright** - Multi-browser E2E testing
+- **MSW** - API request mocking
+
+### Example Tests
+
+**Component Test:**
+```typescript
+import {render, screen} from "@testing-library/react"
+import {Button} from "./button"
+
+test("renders button", () => {
+  render(<Button>Click me</Button>)
+  expect(screen.getByText("Click me")).toBeInTheDocument()
+})
+```
+
+**E2E Test:**
+```typescript
+import {test, expect} from "@playwright/test"
+
+test("sign in flow", async ({page}) => {
+  await page.goto("/auth/signin")
+  await page.getByLabel(/email/i).fill("test@example.com")
+  await page.getByLabel(/password/i).fill("password")
+  await page.getByRole("button", {name: /sign in/i}).click()
+  await expect(page).toHaveURL("/dashboard")
+})
+```
+
+For comprehensive testing guides, see [apps/web/docs/TESTING.md](./apps/web/docs/TESTING.md).
+
+## Production Features
+
+### Feature Flags
+
+Control feature rollouts with environment-based flags:
+
+```typescript
+// Server components
+import {getFeature} from "@/lib/feature-flags"
+
+const isEnabled = getFeature("newFeature")
+
+// Client components
+import {useFeature} from "@/lib/hooks/use-feature"
+
+const isEnabled = useFeature("newFeature")
+```
+
+Configure in `.env`:
+```bash
+NEXT_PUBLIC_FEATURE_SOCIAL_AUTH="true"
+NEXT_PUBLIC_MAINTENANCE_MODE="false"
+```
+
+### Structured Logging
+
+Production-ready logging with Pino:
+
+```typescript
+import {logger} from "@/lib/server/logger"
+
+logger.info({userId: "123"}, "User logged in")
+logger.error({err: error}, "Failed to process")
+```
+
+### Security
+
+- ✅ Security headers (XSS, CSP, frame protection)
+- ✅ CORS configuration
+- ✅ Sensitive data redaction in logs
+- ✅ Content Security Policy
+
+### Animations
+
+Smooth, accessible animations with Framer Motion:
+
+```typescript
+import {motion} from "framer-motion"
+import {fadeInUp} from "@/lib/animations/variants"
+
+<motion.div variants={fadeInUp} initial="hidden" animate="visible">
+  Animated content
+</motion.div>
+```
+
+See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) for all features.
 
 ## Deployment
 
