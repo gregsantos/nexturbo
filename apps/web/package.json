@@ -65,6 +65,7 @@
     "drizzle-kit": "^0.31.5",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
+    "happy-dom": "^20.0.8",
     "jsdom": "^27.0.1",
     "msw": "^2.11.6",
     "tailwindcss": "^4",
