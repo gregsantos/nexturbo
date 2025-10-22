@@ -1843,11 +1843,16 @@ export async function createPost(data: NewPost): Promise<ActionResult<Post>> {
 
 ## Testing
 
+This project has comprehensive testing infrastructure with Vitest (unit/integration), Playwright (E2E), and MSW (API mocking). See `docs/TESTING.md` for complete guide.
+
 ### Unit Tests (Vitest)
+
+**Component Testing:**
 
 ```typescript
 // components/ui/button.test.tsx
 import {render, screen} from "@testing-library/react"
+import {userEvent} from "@testing-library/user-event"
 import {Button} from "./button"
 
 describe("Button", () => {
@@ -1861,6 +1866,40 @@ describe("Button", () => {
     const button = screen.getByRole("button")
     expect(button).toHaveClass("bg-destructive")
   })
+
+  it("handles click events", async () => {
+    const handleClick = vi.fn()
+    render(<Button onClick={handleClick}>Click me</Button>)
+
+    await userEvent.click(screen.getByRole("button"))
+    expect(handleClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("is disabled when isLoading is true", () => {
+    render(<Button isLoading>Submit</Button>)
+    expect(screen.getByRole("button")).toBeDisabled()
+  })
+})
+```
+
+**Utility Testing:**
+
+```typescript
+// lib/utils.test.ts
+import {cn} from "./utils"
+
+describe("cn", () => {
+  it("merges class names", () => {
+    expect(cn("foo", "bar")).toBe("foo bar")
+  })
+
+  it("handles conditional classes", () => {
+    expect(cn("foo", false && "bar", "baz")).toBe("foo baz")
+  })
+
+  it("merges Tailwind classes correctly", () => {
+    expect(cn("px-2 py-1", "px-4")).toBe("py-1 px-4")
+  })
 })
 ```
 
@@ -1868,8 +1907,9 @@ describe("Button", () => {
 
 ```typescript
 // lib/actions/posts.test.ts
-import {createPost} from "./posts"
+import {createPost, updatePost} from "./posts"
 import {db} from "@/lib/server/db"
+import {posts} from "@/lib/server/db/schema"
 
 describe("createPost", () => {
   it("creates a post successfully", async () => {
@@ -1882,10 +1922,725 @@ describe("createPost", () => {
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.post.title).toBe("Test Post")
+      expect(result.post.slug).toBe("test-post")
     }
+  })
+
+  it("validates required fields", async () => {
+    const result = await createPost({
+      title: "",
+      content: "Test",
+      slug: "test",
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toContain("title")
+    }
+  })
+
+  it("handles database errors gracefully", async () => {
+    // Test duplicate slug
+    await createPost({title: "Test", content: "Test", slug: "duplicate"})
+    const result = await createPost({title: "Test", content: "Test", slug: "duplicate"})
+
+    expect(result.success).toBe(false)
   })
 })
 ```
+
+### API Mocking with MSW
+
+**Setup MSW handlers:**
+
+```typescript
+// mocks/handlers.ts
+import {http, HttpResponse} from "msw"
+
+export const handlers = [
+  // Mock authentication endpoints
+  http.post("/api/auth/sign-in", async ({request}) => {
+    const body = await request.json()
+
+    if (body.email === "test@example.com" && body.password === "password") {
+      return HttpResponse.json({
+        user: {id: "1", email: "test@example.com", name: "Test User"},
+        session: {token: "mock-token"},
+      })
+    }
+
+    return HttpResponse.json(
+      {error: "Invalid credentials"},
+      {status: 401}
+    )
+  }),
+
+  // Mock data endpoints
+  http.get("/api/posts", () => {
+    return HttpResponse.json({
+      posts: [
+        {id: "1", title: "Test Post", content: "Test content"},
+      ],
+    })
+  }),
+]
+```
+
+**Use in tests:**
+
+```typescript
+// components/post-list.test.tsx
+import {render, screen, waitFor} from "@testing-library/react"
+import {PostList} from "./post-list"
+
+describe("PostList", () => {
+  it("loads and displays posts", async () => {
+    render(<PostList />)
+
+    // Shows loading state
+    expect(screen.getByText("Loading...")).toBeInTheDocument()
+
+    // Waits for data to load (mocked by MSW)
+    await waitFor(() => {
+      expect(screen.getByText("Test Post")).toBeInTheDocument()
+    })
+  })
+})
+```
+
+### E2E Tests (Playwright)
+
+**Authentication flow:**
+
+```typescript
+// e2e/auth.spec.ts
+import {test, expect} from "@playwright/test"
+
+test.describe("Authentication", () => {
+  test("allows users to sign in", async ({page}) => {
+    await page.goto("/auth/signin")
+
+    await page.fill('input[name="email"]', "test@example.com")
+    await page.fill('input[name="password"]', "password")
+    await page.click('button[type="submit"]')
+
+    await expect(page).toHaveURL("/dashboard")
+    await expect(page.locator("h1")).toContainText("Dashboard")
+  })
+
+  test("shows error for invalid credentials", async ({page}) => {
+    await page.goto("/auth/signin")
+
+    await page.fill('input[name="email"]', "wrong@example.com")
+    await page.fill('input[name="password"]', "wrong")
+    await page.click('button[type="submit"]')
+
+    await expect(page.locator(".error-message")).toContainText(
+      "Invalid credentials"
+    )
+  })
+})
+```
+
+**User interactions:**
+
+```typescript
+// e2e/dashboard.spec.ts
+import {test, expect} from "@playwright/test"
+
+test.describe("Dashboard", () => {
+  test.beforeEach(async ({page}) => {
+    // Authenticate before each test
+    await page.goto("/auth/signin")
+    await page.fill('input[name="email"]', "test@example.com")
+    await page.fill('input[name="password"]', "password")
+    await page.click('button[type="submit"]')
+    await page.waitForURL("/dashboard")
+  })
+
+  test("displays user statistics", async ({page}) => {
+    await expect(page.locator('[data-testid="stats-card"]')).toHaveCount(4)
+  })
+
+  test("allows filtering posts", async ({page}) => {
+    await page.fill('input[placeholder="Filter posts..."]', "test")
+
+    const posts = page.locator('[data-testid="post-item"]')
+    await expect(posts).toHaveCount(1)
+  })
+})
+```
+
+### Test Commands
+
+```bash
+# Unit tests
+npm test                    # Run all unit tests
+npm run test:ui            # Interactive test UI
+npm run test:coverage      # Coverage report
+
+# E2E tests
+npm run test:e2e           # Run E2E tests
+npm run test:e2e:ui        # Interactive E2E UI
+
+# All tests
+npm run test:all           # Run unit + E2E
+```
+
+### Coverage Configuration
+
+Minimum coverage thresholds (configured in `vitest.config.ts`):
+
+- Lines: 70%
+- Functions: 70%
+- Branches: 70%
+- Statements: 70%
+
+### Best Practices
+
+1. **Test user behavior, not implementation**
+   - Focus on what users see and do
+   - Avoid testing internal state
+
+2. **Use accessible queries**
+   - Prefer `getByRole`, `getByLabelText`, `getByText`
+   - Avoid `getByTestId` unless necessary
+
+3. **Mock external dependencies**
+   - Use MSW for API calls
+   - Mock date/time for consistent tests
+   - Mock random values
+
+4. **Test loading and error states**
+   - Verify loading indicators appear
+   - Check error messages display correctly
+   - Test empty states
+
+5. **Keep tests independent**
+   - Each test should run in isolation
+   - Clean up after tests
+   - Don't rely on test execution order
+
+## Feature Flags
+
+This project uses a Zod-validated feature flag system for controlled feature rollouts.
+
+### Server-Side Usage
+
+```typescript
+// lib/server/some-feature.ts
+import {getFeature, requireFeature} from "@/lib/feature-flags"
+
+export async function handleRequest() {
+  // Check if feature is enabled
+  if (getFeature("socialAuth")) {
+    // Social auth logic
+  }
+
+  // Require feature (throws if disabled)
+  requireFeature("twoFactorAuth")
+  // 2FA logic continues here
+}
+```
+
+### Client-Side Usage
+
+```typescript
+// components/auth-options.tsx
+"use client"
+
+import {useFeature, useFeatures} from "@/lib/hooks/use-feature"
+
+export function AuthOptions() {
+  // Single feature check
+  const isSocialAuthEnabled = useFeature("socialAuth")
+
+  // Multiple features at once
+  const {socialAuth, twoFactorAuth} = useFeatures([
+    "socialAuth",
+    "twoFactorAuth",
+  ])
+
+  return (
+    <div>
+      {socialAuth && <SocialAuthButtons />}
+      {twoFactorAuth && <TwoFactorSetup />}
+    </div>
+  )
+}
+```
+
+### Defining Feature Flags
+
+```typescript
+// lib/feature-flags.ts
+export const featureFlagSchema = z.object({
+  socialAuth: z.boolean().default(false),
+  twoFactorAuth: z.boolean().default(false),
+  maintenanceMode: z.boolean().default(false),
+  enableAnalytics: z.boolean().default(true),
+  userDarkMode: z.boolean().default(true),
+  // Add new flags here
+})
+
+export type FeatureFlags = z.infer<typeof featureFlagSchema>
+export type FeatureFlag = keyof FeatureFlags
+```
+
+### Environment Variables
+
+```bash
+# .env
+NEXT_PUBLIC_FEATURE_SOCIAL_AUTH="true"
+NEXT_PUBLIC_FEATURE_2FA="false"
+NEXT_PUBLIC_MAINTENANCE_MODE="false"
+NEXT_PUBLIC_ENABLE_ANALYTICS="true"
+```
+
+### Best Practices
+
+1. **Use descriptive names**: `enableSocialAuth` > `feature1`
+2. **Default to false**: New features should default to disabled
+3. **Check on server**: Always validate flags server-side for security
+4. **Gradual rollout**: Use feature flags for gradual feature releases
+5. **Clean up**: Remove flags and dead code after full rollout
+
+## Structured Logging
+
+This project uses Pino for production-ready structured logging with automatic sensitive data redaction.
+
+### Basic Usage
+
+```typescript
+// app/api/users/route.ts
+import {logger} from "@/lib/server/logger"
+
+export async function GET() {
+  logger.info("Fetching users list")
+
+  try {
+    const users = await db.query.users.findMany()
+    logger.info({count: users.length}, "Users fetched successfully")
+
+    return NextResponse.json({users})
+  } catch (error) {
+    logger.error({error}, "Failed to fetch users")
+    return NextResponse.json({error: "Internal error"}, {status: 500})
+  }
+}
+```
+
+### Request/Response Logging
+
+```typescript
+// lib/actions/posts.ts
+"use server"
+
+import {logger} from "@/lib/server/logger"
+import {logRequest, logResponse} from "@/lib/server/logger"
+
+export async function createPost(data: NewPost) {
+  logRequest("createPost", {data})
+
+  try {
+    const [post] = await db.insert(posts).values(data).returning()
+
+    logResponse("createPost", {success: true, postId: post.id})
+    return {success: true, post}
+  } catch (error) {
+    logger.error({error, data}, "Failed to create post")
+    logResponse("createPost", {success: false})
+    return {success: false, error: "Failed to create post"}
+  }
+}
+```
+
+### Database Query Logging
+
+```typescript
+// lib/server/db/queries.ts
+import {logger} from "@/lib/server/logger"
+
+export async function getUserById(id: string) {
+  const startTime = Date.now()
+
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, id),
+  })
+
+  logger.info(
+    {
+      query: "getUserById",
+      userId: id,
+      duration: Date.now() - startTime,
+      found: !!user,
+    },
+    "Database query executed"
+  )
+
+  return user
+}
+```
+
+### Authentication Events
+
+```typescript
+// lib/actions/auth.ts
+import {logger} from "@/lib/server/logger"
+
+export async function signIn(email: string, password: string) {
+  logger.info({email}, "Sign in attempt")
+
+  try {
+    const session = await auth.signIn({email, password})
+
+    logger.info({email, userId: session.user.id}, "Sign in successful")
+    return {success: true, session}
+  } catch (error) {
+    logger.warn({email, error}, "Sign in failed")
+    return {success: false, error: "Invalid credentials"}
+  }
+}
+```
+
+### Performance Metrics
+
+```typescript
+// lib/actions/expensive-operation.ts
+import {logger} from "@/lib/server/logger"
+
+export async function processLargeDataset(datasetId: string) {
+  const start = Date.now()
+
+  try {
+    const result = await performExpensiveComputation(datasetId)
+
+    const duration = Date.now() - start
+    logger.info(
+      {datasetId, duration, recordsProcessed: result.count},
+      "Dataset processing completed"
+    )
+
+    // Alert if processing takes too long
+    if (duration > 5000) {
+      logger.warn(
+        {datasetId, duration},
+        "Dataset processing exceeded 5 second threshold"
+      )
+    }
+
+    return result
+  } catch (error) {
+    logger.error({datasetId, error, duration: Date.now() - start}, "Processing failed")
+    throw error
+  }
+}
+```
+
+### Sensitive Data Redaction
+
+The logger automatically redacts these fields (configured in `lib/server/logger.ts`):
+
+- `password`
+- `token`
+- `secret`
+- `apiKey`
+- `req.headers.authorization`
+- `creditCard`
+
+```typescript
+// Automatically redacted
+logger.info({
+  email: "user@example.com",
+  password: "secret123", // Will be redacted: "[Redacted]"
+  token: "abc123", // Will be redacted: "[Redacted]"
+})
+```
+
+### Log Levels
+
+```typescript
+logger.trace("Very detailed debugging info")
+logger.debug("Debugging info")
+logger.info("General info")
+logger.warn("Warning - something unexpected")
+logger.error("Error - operation failed")
+logger.fatal("Fatal error - application crash")
+```
+
+### Environment Configuration
+
+```bash
+# .env
+LOG_LEVEL="info"          # trace, debug, info, warn, error, fatal
+NODE_ENV="development"     # development = pretty logs, production = JSON
+```
+
+## Security
+
+This project implements comprehensive security headers and CORS configuration in middleware.
+
+### Security Headers
+
+Automatically applied to all responses:
+
+```typescript
+// middleware.ts
+const securityHeaders = {
+  // Prevent XSS attacks
+  "X-XSS-Protection": "1; mode=block",
+
+  // Prevent MIME type sniffing
+  "X-Content-Type-Options": "nosniff",
+
+  // Control referrer information
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+
+  // Prevent clickjacking
+  "X-Frame-Options": "DENY",
+
+  // Content Security Policy
+  "Content-Security-Policy": isDevelopment
+    ? "default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: https:;"
+    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';",
+
+  // Control browser features
+  "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+}
+```
+
+### CORS Configuration
+
+Configure allowed origins in middleware:
+
+```typescript
+// middleware.ts
+const allowedOrigins = [
+  process.env.NEXT_PUBLIC_APP_URL!,
+  "http://localhost:3000",
+  // Add production domains
+]
+
+// CORS headers
+if (allowedOrigins.includes(origin || "")) {
+  response.headers.set("Access-Control-Allow-Origin", origin || "*")
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  )
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  )
+}
+```
+
+### API Route Security
+
+Always validate authentication in API routes:
+
+```typescript
+// app/api/admin/route.ts
+import {auth} from "@/lib/server/auth"
+import {headers} from "next/headers"
+
+export async function POST(request: Request) {
+  // 1. Validate authentication
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session) {
+    return NextResponse.json({error: "Unauthorized"}, {status: 401})
+  }
+
+  // 2. Validate authorization (roles/permissions)
+  if (session.user.role !== "admin") {
+    return NextResponse.json({error: "Forbidden"}, {status: 403})
+  }
+
+  // 3. Validate input with Zod
+  const body = await request.json()
+  const validatedData = schema.parse(body)
+
+  // 4. Perform operation
+  // ...
+}
+```
+
+### Input Validation
+
+Always validate user input with Zod:
+
+```typescript
+// lib/actions/users.ts
+import {z} from "zod"
+
+const updateUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  age: z.number().int().positive().max(150).optional(),
+})
+
+export async function updateUser(data: unknown) {
+  try {
+    // Validate input
+    const validated = updateUserSchema.parse(data)
+
+    // Proceed with validated data
+    // ...
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return {success: false, errors: error.errors}
+    }
+    throw error
+  }
+}
+```
+
+### Rate Limiting (Optional)
+
+For production, consider adding rate limiting with Upstash:
+
+```typescript
+// lib/server/rate-limit.ts
+import {Ratelimit} from "@upstash/ratelimit"
+import {Redis} from "@upstash/redis"
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, "10 s"),
+})
+
+export async function checkRateLimit(identifier: string) {
+  const {success, remaining} = await ratelimit.limit(identifier)
+  return {allowed: success, remaining}
+}
+```
+
+## Animations
+
+This project uses Framer Motion for professional animations with reusable variants and hooks. See `docs/ANIMATIONS.md` for complete guide.
+
+### Reusable Variants
+
+```typescript
+// components/example.tsx
+import {motion} from "framer-motion"
+import {fadeInUp, staggerContainer, staggerItem} from "@/lib/animations/variants"
+
+export function Example() {
+  return (
+    <motion.div
+      variants={staggerContainer}
+      initial='hidden'
+      animate='visible'
+    >
+      <motion.h1 variants={fadeInUp}>Title</motion.h1>
+      <motion.p variants={staggerItem}>Paragraph 1</motion.p>
+      <motion.p variants={staggerItem}>Paragraph 2</motion.p>
+    </motion.div>
+  )
+}
+```
+
+### Animation Hooks
+
+**Scroll-triggered animations:**
+
+```typescript
+import {useAnimateOnView} from "@/lib/animations/hooks"
+import {fadeInUp} from "@/lib/animations/variants"
+
+export function ScrollAnimation() {
+  const {ref, isInView} = useAnimateOnView({threshold: 0.3})
+
+  return (
+    <motion.div
+      ref={ref}
+      variants={fadeInUp}
+      initial='hidden'
+      animate={isInView ? "visible" : "hidden"}
+    >
+      Animates when scrolled into view
+    </motion.div>
+  )
+}
+```
+
+**Count-up animations:**
+
+```typescript
+import {useAnimateOnView, useCountUp} from "@/lib/animations/hooks"
+
+export function StatCard({end, label}: {end: number; label: string}) {
+  const {ref, isInView} = useAnimateOnView({triggerOnce: true})
+  const count = useCountUp(isInView ? end : 0, 2000) // duration: 2000ms
+
+  return (
+    <div ref={ref}>
+      <div className='text-3xl font-bold'>{count}</div>
+      <div className='text-sm text-muted-foreground'>{label}</div>
+    </div>
+  )
+}
+```
+
+**Accessibility (Reduced Motion):**
+
+```typescript
+import {useReducedMotion} from "@/lib/animations/hooks"
+
+export function AccessibleAnimation() {
+  const prefersReducedMotion = useReducedMotion()
+
+  return (
+    <motion.div
+      animate={
+        prefersReducedMotion
+          ? {opacity: 1} // No motion
+          : {opacity: 1, y: 0} // With motion
+      }
+    >
+      Content
+    </motion.div>
+  )
+}
+```
+
+### Interactive Animations
+
+```typescript
+import {motion} from "framer-motion"
+
+export function InteractiveCard() {
+  return (
+    <motion.div
+      whileHover={{scale: 1.05, y: -5}}
+      whileTap={{scale: 0.95}}
+      className='rounded-lg border bg-card p-6'
+    >
+      <h3>Card Title</h3>
+      <p>Card content</p>
+    </motion.div>
+  )
+}
+```
+
+### Available Variants
+
+- **Fade**: `fadeIn`, `fadeInUp`, `fadeInDown`, `fadeInLeft`, `fadeInRight`
+- **Scale**: `scaleIn`, `scaleUp`
+- **Stagger**: `staggerContainer`, `staggerItem`
+- **Interaction**: `hoverScale`, `tapScale`
+- **Modal**: `modalOverlay`, `modalContent`
+
+### Performance Best Practices
+
+1. **Use GPU-accelerated properties**: `x`, `y`, `scale`, `rotate`, `opacity`
+2. **Avoid layout properties**: `width`, `height`, `top`, `left`, `padding`, `margin`
+3. **Respect reduced motion**: Always use `useReducedMotion()` hook
+4. **Lazy load heavy animations**: Use `dynamic()` import for complex animations
 
 ## Common Patterns
 

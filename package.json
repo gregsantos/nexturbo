@@ -12,6 +12,10 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
+    "test": "turbo test",
+    "test:ui": "turbo test:ui",
+    "test:coverage": "turbo test:coverage",
+    "test:e2e": "turbo test:e2e",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "repository": {

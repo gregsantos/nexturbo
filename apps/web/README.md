@@ -124,6 +124,147 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Testing
+
+This project has comprehensive testing infrastructure:
+
+### Unit & Integration Tests (Vitest)
+
+```bash
+npm test                    # Run all tests
+npm run test:ui            # Interactive test UI
+npm run test:coverage      # Coverage report
+npm run test:watch         # Watch mode
+```
+
+### E2E Tests (Playwright)
+
+```bash
+npm run test:e2e           # Run E2E tests
+npm run test:e2e:ui        # Interactive E2E UI
+npm run test:e2e:debug     # Debug mode
+```
+
+### All Tests
+
+```bash
+npm run test:all           # Run unit + E2E tests
+```
+
+**Coverage Targets**: 70% for lines, functions, branches, and statements
+
+See [`docs/TESTING.md`](docs/TESTING.md) for comprehensive testing guide.
+
+## Production Features
+
+This starter includes production-ready features out of the box:
+
+### Feature Flags
+
+Environment-based feature toggles with Zod validation:
+
+```bash
+# .env
+NEXT_PUBLIC_FEATURE_SOCIAL_AUTH="true"
+NEXT_PUBLIC_FEATURE_2FA="false"
+```
+
+Usage in code:
+
+```typescript
+import {getFeature} from "@/lib/feature-flags"
+import {useFeature} from "@/lib/hooks/use-feature"
+
+// Server-side
+if (getFeature("socialAuth")) {
+  // ...
+}
+
+// Client-side
+const isEnabled = useFeature("socialAuth")
+```
+
+### Structured Logging (Pino)
+
+Production-ready logging with automatic sensitive data redaction:
+
+```typescript
+import {logger} from "@/lib/server/logger"
+
+logger.info({userId: "123"}, "User logged in")
+logger.error({error}, "Operation failed")
+```
+
+Features:
+
+- Pretty-printed logs in development
+- JSON logs in production
+- Automatic password/token redaction
+- Request/response logging helpers
+- Performance metric tracking
+
+### Security
+
+- **Security Headers**: XSS protection, MIME sniffing prevention, CSP, frame protection
+- **CORS**: Configurable origin validation
+- **Input Validation**: Zod schema validation throughout
+- **Auth Protection**: Server-first authentication with BetterAuth
+
+### Animations (Framer Motion)
+
+Professional animations with reusable variants and hooks:
+
+```typescript
+import {motion} from "framer-motion"
+import {fadeInUp, useAnimateOnView} from "@/lib/animations"
+
+// Scroll-triggered animation
+const {ref, isInView} = useAnimateOnView()
+
+<motion.div ref={ref} variants={fadeInUp} animate={isInView ? "visible" : "hidden"}>
+  Content
+</motion.div>
+```
+
+See [`docs/ANIMATIONS.md`](docs/ANIMATIONS.md) for complete animation guide.
+
+### CI/CD
+
+GitHub Actions pipeline included:
+
+- Lint with ESLint
+- Type-check with TypeScript
+- Run tests with coverage reporting
+- Run E2E tests
+- Build verification
+- Artifact uploads
+
+Pipeline runs on every push and pull request.
+
+## Project Structure
+
+```
+apps/web/
+├── app/                    # Next.js App Router
+├── components/
+│   ├── ui/                # shadcn/ui components
+│   ├── shared/            # Shared components
+│   └── landing/           # Landing page components
+├── lib/
+│   ├── server/            # Server-only code
+│   │   ├── db/           # Database & schemas
+│   │   ├── auth.ts       # Auth configuration
+│   │   └── logger.ts     # Structured logging
+│   ├── actions/           # Server actions
+│   ├── animations/        # Framer Motion configs
+│   ├── feature-flags.ts   # Feature flags
+│   └── utils.ts           # Utilities
+├── docs/                  # Documentation
+├── e2e/                   # E2E tests
+├── mocks/                 # MSW API mocks
+└── __tests__/             # Unit tests
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
