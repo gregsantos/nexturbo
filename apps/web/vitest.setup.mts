@@ -3,6 +3,23 @@ import {cleanup} from "@testing-library/react"
 import {afterEach, beforeAll, afterAll, vi} from "vitest"
 import {server} from "./mocks/server"
 
+// Polyfill browser globals for CI environment (fixes webidl-conversions errors)
+// This is needed because some dependencies expect browser globals in jsdom
+if (typeof global !== "undefined") {
+  // Ensure WeakMap is available on global
+  if (!global.WeakMap) {
+    global.WeakMap = WeakMap
+  }
+  // Ensure Map is available on global
+  if (!global.Map) {
+    global.Map = Map
+  }
+  // Ensure Set is available on global
+  if (!global.Set) {
+    global.Set = Set
+  }
+}
+
 // Start MSW server before all tests
 beforeAll(() => server.listen({onUnhandledRequest: "warn"}))
 

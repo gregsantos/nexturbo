@@ -10,6 +10,12 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.mts"],
     include: ["**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", ".next", "e2e"],
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

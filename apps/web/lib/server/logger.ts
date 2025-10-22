@@ -12,7 +12,6 @@ import pino from "pino"
  */
 
 const isDevelopment = process.env.NODE_ENV === "development"
-const isProduction = process.env.NODE_ENV === "production"
 
 // Create base logger
 export const logger = pino({
