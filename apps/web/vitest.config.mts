@@ -2,6 +2,16 @@ import {defineConfig} from "vitest/config"
 import react from "@vitejs/plugin-react"
 import path from "path"
 
+// Polyfill browser globals BEFORE any tests load (fixes webidl-conversions errors in CI)
+if (typeof global !== "undefined") {
+  // @ts-ignore
+  global.WeakMap = WeakMap
+  // @ts-ignore
+  global.Map = Map
+  // @ts-ignore
+  global.Set = Set
+}
+
 export default defineConfig({
   plugins: [react()],
   test: {
