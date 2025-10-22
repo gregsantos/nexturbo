@@ -1,7 +1,7 @@
 "use client"
 
 import {useEffect, useState, useRef} from "react"
-import {useInView, useAnimation, type AnimationControls} from "framer-motion"
+import {useInView, useAnimation} from "framer-motion"
 
 /**
  * Animation Hooks
@@ -20,8 +20,8 @@ export function useAnimateOnView(options?: {
   threshold?: number
   triggerOnce?: boolean
 }): {
-  ref: React.RefObject<HTMLDivElement>
-  controls: AnimationControls
+  ref: React.RefObject<HTMLDivElement | null>
+  controls: ReturnType<typeof useAnimation>
   isInView: boolean
 } {
   const ref = useRef<HTMLDivElement>(null)

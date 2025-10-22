@@ -60,7 +60,7 @@ export const handlers = [
 
   // Example: Mock sign up endpoint
   http.post(`${baseUrl}/api/auth/sign-up`, async ({request}) => {
-    const body = await request.json()
+    const body = (await request.json()) as {email: string; name: string}
 
     // Simulate email already exists error
     if (body.email === "existing@example.com") {

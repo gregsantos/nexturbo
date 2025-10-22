@@ -168,7 +168,7 @@ describe("Example: User Creation Action", () => {
     })
 
     expect(result.success).toBe(true)
-    if (result.success) {
+    if (result.success && result.user) {
       expect(result.user.name).toBe("John Doe")
       expect(result.user.email).toBe("john@example.com")
       expect(result.user.id).toBeDefined()
