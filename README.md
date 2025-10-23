@@ -38,7 +38,7 @@ A modern, production-ready Next.js 15 starter template with TypeScript, Tailwind
 
 ```md
 .
-claude-next/
+nexturbo/
 ├── .claude/
 │ └── skills/ # Claude Code skills for guided workflows
 │ ├── add-feature.md # Complete feature implementation
@@ -121,7 +121,7 @@ See the [Deployment](#deployment) section for detailed instructions.
 
 ```bash
 git clone <repository-url>
-cd claude-next
+cd nexturbo
 ```
 
 2. Install dependencies:
