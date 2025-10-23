@@ -1,5 +1,5 @@
 {
-  "name": "claude-next",
+  "name": "nexturbo",
   "version": "1.0.0",
   "private": true,
   "description": "Next.js 15 monorepo with Turborepo",
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "http://local_proxy@127.0.0.1:41114/git/gregsantos/claude-next"
+    "url": "http://local_proxy@127.0.0.1:41114/git/gregsantos/nexturbo"
   },
   "keywords": [
     "nextjs",
