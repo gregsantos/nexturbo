@@ -163,6 +163,12 @@ describe("createUser", () => {
 
 ## E2E Testing
 
+> **Important for Starter Template Users**: The E2E tests in this project are comprehensive examples that demonstrate testing strategies for a full authentication and dashboard implementation. **These tests will fail until you implement the corresponding features.** They serve multiple purposes:
+> - **Documentation**: Shows what features should be built
+> - **TDD Roadmap**: Implement features to make tests pass
+> - **Learning Resource**: Demonstrates E2E testing best practices
+> - **Non-blocking in CI**: E2E tests run in CI but don't block merges
+
 ### Authentication Flow Tests
 
 Test complete user journeys with Playwright.

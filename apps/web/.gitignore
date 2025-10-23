@@ -9,6 +9,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+apps/*/package-lock.json
+packages/*/package-lock.json
 
 # testing
 /coverage
@@ -40,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# drizzle migrations (users generate their own)
+lib/server/db/migrations/

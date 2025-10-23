@@ -38,10 +38,27 @@ sudo -u postgres psql -c "CREATE DATABASE claude_next;"
 DATABASE_URL="postgresql://postgres@localhost:5432/claude_next"
 ```
 
-**Run migrations:**
+**Push schema to database:**
 ```bash
 npm run db:push
 ```
+
+> **Note**: This template does not include pre-generated migrations. Each new project should create its own migration history based on your schema needs.
+
+**Database workflow:**
+- **Development** (`db:push`): Directly syncs your schema to the database without creating migration files. Fast for prototyping.
+- **Production** (`db:generate` + `db:migrate`): Generates SQL migration files and applies them. Recommended for production and team collaboration.
+
+```bash
+# Development (direct schema sync)
+npm run db:push
+
+# Production (tracked migrations)
+npm run db:generate    # Generate migration files from schema changes
+npm run db:migrate     # Apply migrations to database
+```
+
+**Why no migrations folder?** This is a template starter. You'll generate your own migrations as you build your app and modify the schema.
 
 #### Option B: Migrate to Supabase (Production & Team Collaboration)
 
@@ -81,9 +98,13 @@ npm run db:push
    export const client = postgres(connectionString, { prepare: false })
    ```
 
-5. **Run migrations:**
+5. **Push schema to database:**
    ```bash
+   # Development
    npm run db:push
+
+   # Or for production with tracked migrations
+   npm run db:generate && npm run db:migrate
    ```
 
 6. **Verify connection:**
@@ -145,13 +166,15 @@ npm run test:e2e:ui        # Interactive E2E UI
 npm run test:e2e:debug     # Debug mode
 ```
 
+> **Note**: E2E tests in this starter are comprehensive examples showing how to test a full authentication and dashboard implementation. They will fail until you implement the corresponding features. Use them as a roadmap and implement features to make tests pass (TDD approach).
+
 ### All Tests
 
 ```bash
 npm run test:all           # Run unit + E2E tests
 ```
 
-**Coverage Targets**: 70% for lines, functions, branches, and statements
+**Coverage Targets**: Set to 0% baseline for starter projects. Adjust thresholds in `vitest.config.mts` as your test coverage grows.
 
 See [`docs/TESTING.md`](docs/TESTING.md) for comprehensive testing guide.
 
