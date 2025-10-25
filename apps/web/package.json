@@ -73,6 +73,7 @@
     "vitest": "^3.2.4"
   },
   "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.1.15",
     "lightningcss-linux-x64-gnu": "^1.30.2"
   }
 }
