@@ -15,13 +15,13 @@ This project uses PostgreSQL with Drizzle ORM. You can start with local developm
 4. Open the built-in psql terminal or use any PostgreSQL client
 5. Create your database:
    ```sql
-   CREATE DATABASE "claude_next" WITH ENCODING 'UTF8';
+   CREATE DATABASE "your_db" WITH ENCODING 'UTF8';
    ```
 
 **Linux:**
 ```bash
 sudo apt-get install postgresql postgresql-contrib
-sudo -u postgres psql -c "CREATE DATABASE claude_next;"
+sudo -u postgres psql -c "CREATE DATABASE your_db;"
 ```
 
 **Windows:**
@@ -35,7 +35,7 @@ sudo -u postgres psql -c "CREATE DATABASE claude_next;"
 **Configure environment:**
 ```bash
 # .env
-DATABASE_URL="postgresql://postgres@localhost:5432/claude_next"
+DATABASE_URL="postgresql://postgres@localhost:5432/your_db"
 ```
 
 **Push schema to database:**
