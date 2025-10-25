@@ -147,18 +147,20 @@ export function AnimatedHero() {
         <FeaturesGrid />
 
         {/* Simple Footer CTA */}
-        <div className='mt-32 text-center'>
-          <h3 className='mb-4 text-2xl font-bold'>Ready to Build Something Amazing?</h3>
+        <div className='mt-18 text-center'>
+          <h3 className='mb-4 text-2xl font-bold'>
+            Ready to Build Something Amazing?
+          </h3>
           <p className='mb-8 text-muted-foreground'>
             Get started in minutes with production-ready code.
           </p>
-          <Link href='/auth/signup'>
+          <Link href='https://github.com/gregsantos/nexturbo'>
             <motion.div
               whileHover={{scale: 1.05}}
               whileTap={{scale: 0.95}}
               className='inline-flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-sm font-medium text-primary-foreground shadow-lg'
             >
-              Get Started Free
+              Clone Now
             </motion.div>
           </Link>
         </div>
@@ -176,12 +178,11 @@ function StatsSection() {
       variants={fadeInUp}
       initial='hidden'
       animate={isInView ? "visible" : "hidden"}
-      className='mt-20 grid w-full max-w-4xl grid-cols-2 gap-8 sm:grid-cols-4'
+      className='mt-20 grid w-full max-w-4xl grid-cols-1 gap-8 sm:grid-cols-3'
     >
       <StatCard end={95} suffix='%' label='Production Ready' />
       <StatCard end={70} suffix='%+' label='Test Coverage' />
       <StatCard end={30} suffix='+' label='Components' />
-      <StatCard end={5000} suffix='+' label='Lines Added' />
     </motion.div>
   )
 }
